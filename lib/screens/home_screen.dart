@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import '../components/Navbar.dart';
-
+import 'translate_screen.dart';
+import 'gallery_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,7 +17,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentPage = 0;
   int _selectedIndex = 0;
 
-
   List<String> imagePaths = [
     'assets/images/photo1.png',
     'assets/images/photo2.png',
@@ -26,8 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _speak() async {
     await flutterTts.setLanguage("th-TH");
     await flutterTts.setPitch(1.0);
-    await flutterTts.setVolume(1.0);       // เพิ่มระดับเสียงให้สุด
-    //await flutterTts.setSpeechRate(0.5);   // ทำให้พูดช้าลง ฟังชัดขึ้น
+    await flutterTts.setVolume(1.0);
     await flutterTts.speak(
       "1. สามารถเลือกโหมดแปลได้\n"
       "แปลแบบเรียลไทม์: สามารถทำภาษามือต่อหน้ากล้อง\n"
@@ -60,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
               'assets/images/logo.png',
               height: 50,
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             const Text(
               'SnapSign',
               style: TextStyle(
@@ -71,10 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-
-        // เส้นใต้ AppBar
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(1),
+          preferredSize: const Size.fromHeight(1),
           child: Container(
             color: Colors.grey.shade300,
             height: 1,
@@ -88,23 +85,28 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ข้อความต้อนรับ
               RichText(
                 text: const TextSpan(
                   text: 'สวัสดี,\n',
-                  style: TextStyle(fontSize: 14, color: Color.fromARGB(255, 122, 122, 122)),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Color.fromARGB(255, 122, 122, 122),
+                  ),
                   children: [
                     TextSpan(
                       text:
                           'ยินดีต้อนรับเข้าสู่ แอปพลิเคชันแปลภาษามือสำหรับผู้พิการ',
-                      style: TextStyle(fontWeight: FontWeight.bold ,fontSize: 16, color: Color.fromARGB(255, 48, 48, 48)),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Color.fromARGB(255, 48, 48, 48),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 5),
 
-              // รูปภาพสไลด์
               SizedBox(
                 height: 180,
                 child: PageView.builder(
@@ -128,7 +130,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 5),
 
-              // จุด indicator
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(imagePaths.length, (index) {
@@ -147,7 +148,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 1),
 
-              // หัวข้อวิธีการใช้งาน + ปุ่มลำโพง
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -169,7 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
 
-              // รายละเอียดวิธีใช้งาน
               const Text(
                 '1. สามารถเลือกโหมดแปล\n'
                 '   • แปลเรียลไทม์: สามารถทำภาษามือต่อหน้ากล้อง\n'
@@ -182,23 +181,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-     // ปุ่มลอยตรงกลาง
+
+      // ✅ ปุ่มลอยตรงกลาง
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.pinkAccent,
         child: const Icon(Icons.camera_alt, color: Colors.white),
         onPressed: () {
-          // ทำอะไรก็ได้ เช่น ไปหน้าแปลภาษามือ
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const TranslateScreen()),
+          );
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // แถบ Navbar ด้านล่าง
+      // ✅ Navbar ด้านล่าง
       bottomNavigationBar: Navbar(
         selectedIndex: _selectedIndex,
         onItemTapped: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+          if (index == 0) {
+            setState(() {
+              _selectedIndex = index;
+            });
+          } else if (index == 1) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const GalleryScreen()),
+            );
+          }
         },
       ),
     );
