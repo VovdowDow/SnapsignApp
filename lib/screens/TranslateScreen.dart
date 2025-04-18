@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'GalleryScreen.dart';
 
 class TranslateScreen extends StatelessWidget {
   const TranslateScreen({super.key});
@@ -12,11 +13,14 @@ class TranslateScreen extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.volume_up),
+            icon: const Icon(Icons.image),
             onPressed: () {
-              // TODO: พูดข้อความที่แปลได้
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const GalleryScreen()),
+              );
             },
-          )
+          ),
         ],
       ),
       body: Column(
@@ -31,17 +35,23 @@ class TranslateScreen extends StatelessWidget {
           ),
 
           // 🔵 ภาษาที่เลือก
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: const [
-                Text('ภาษามือ'),
-                Icon(Icons.swap_horiz, color: Colors.pink),
-                Text('ภาษาไทย'),
-              ],
-            ),
-          ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Text('ภาษามือ'),
+                    Icon(Icons.swap_horiz, color: Colors.pink),
+                    Text('ภาษาไทย'),
+                    IconButton(
+                      icon: const Icon(Icons.volume_up),
+                      onPressed: () {
+                        // TODO: พูดข้อความที่แปลได้
+                      },
+                    ),
+                  ],
+                ),
+              ),
 
           // 🟣 ข้อความผลลัพธ์
           Container(
@@ -63,4 +73,3 @@ class TranslateScreen extends StatelessWidget {
     );
   }
 }
-

@@ -22,7 +22,7 @@ class Navbar extends StatelessWidget {
           children: <Widget>[
             _buildNavItem(Icons.home, "หน้าแรก", 0),
             const SizedBox(width: 20), // เว้นปุ่มกล้องตรงกลาง
-            _buildNavItem(Icons.image, "รูปภาพ", 1),
+            _buildNavItem(Icons.menu_book, "คลังคำศัพท์", 1),
           ],
         ),
       ),
