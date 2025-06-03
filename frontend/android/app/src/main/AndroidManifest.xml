@@ -1,6 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- สิทธิ์เดิมที่มีอยู่ -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera.any" />
+    
+    <!-- เพิ่มสิทธิ์สำหรับไมโครโฟนและ Speech Recognition -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.MICROPHONE" />
 
     <application
         android:label="snapsign"

@@ -12,6 +12,7 @@ class TranslateScreen extends StatefulWidget {
 class _TranslateScreenState extends State<TranslateScreen> {
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
+  bool _isCameraEnabled = true; // 👈 เพิ่มตัวแปร toggle กล้อง
 
   @override
   void initState() {
@@ -23,7 +24,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
     final cameras = await availableCameras();
     if (cameras.isNotEmpty) {
       _cameraController = CameraController(
-        cameras[0], // กล้องหน้า (หรือใช้ cameras[0] ถ้าต้องการกล้องหลัง)
+        cameras[0],
         ResolutionPreset.medium,
         enableAudio: false,
       );
@@ -37,18 +38,19 @@ class _TranslateScreenState extends State<TranslateScreen> {
     }
   }
 
-  double _getScaleFactor() {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) {
-      return 1.0;
+  Future<void> _disposeCamera() async {
+    if (_cameraController != null) {
+      await _cameraController!.dispose();
+      _cameraController = null;
+      setState(() {
+        _isCameraInitialized = false;
+      });
     }
-    
-    // This ensures the camera preview fills the container width
-    return 1 / _cameraController!.value.aspectRatio;
   }
 
   @override
   void dispose() {
-    _cameraController?.dispose();
+    _disposeCamera();
     super.dispose();
   }
 
@@ -61,17 +63,31 @@ class _TranslateScreenState extends State<TranslateScreen> {
         centerTitle: true,
         actions: [
           IconButton(
+            icon: Icon(_isCameraEnabled ? Icons.videocam : Icons.videocam_off),
+            tooltip: _isCameraEnabled ? 'ปิดกล้อง' : 'เปิดกล้อง',
+            onPressed: () async {
+              if (_isCameraEnabled) {
+                await _disposeCamera();
+              } else {
+                await _initCamera();
+              }
+              setState(() {
+                _isCameraEnabled = !_isCameraEnabled;
+              });
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.mic),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => SpeechPopup(
-                      onCancel: () {
-                        Navigator.of(context).pop();
-                      },
-                    ),
+                  builder: (context) => SpeechPopup(
+                    onCancel: () {
+                      Navigator.of(context).pop();
+                    },
                   ),
+                ),
               );
             },
           ),
@@ -82,7 +98,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
           // 🔴 Live Camera Feed
           Expanded(
             flex: 3,
-            child: _isCameraInitialized && _cameraController != null
+            child: _isCameraEnabled && _isCameraInitialized && _cameraController != null
                 ? Container(
                     width: double.infinity,
                     color: Colors.black,
@@ -93,7 +109,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                           fit: BoxFit.cover,
                           child: SizedBox(
                             width: MediaQuery.of(context).size.width,
-                            height: MediaQuery.of(context).size.width * 
+                            height: MediaQuery.of(context).size.width *
                                 _cameraController!.value.aspectRatio,
                             child: CameraPreview(_cameraController!),
                           ),
@@ -101,7 +117,16 @@ class _TranslateScreenState extends State<TranslateScreen> {
                       ),
                     ),
                   )
-                : const Center(child: CircularProgressIndicator()),
+                : Container(
+                    width: double.infinity,
+                    height: 250,
+                    color: Colors.grey[300],
+                    alignment: Alignment.center,
+                    child: const Text(
+                      'กล้องถูกปิด',
+                      style: TextStyle(fontSize: 18, color: Colors.black54),
+                    ),
+                  ),
           ),
 
           // 🔵 ภาษา
