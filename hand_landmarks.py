@@ -1,10 +1,10 @@
 import cv2
-import mediapipe as mp
+import hand_tracking as mp
 import json
 import os
 
 # === ตั้งค่า ===
-image_folder = 'images/'  # โฟลเดอร์ที่มีรูปภาพ
+image_folder = 'dataset/anticlockwise'  # โฟลเดอร์ที่มีรูปภาพ
 output_json = 'hand_landmarks_data.json'
 
 # เรียกใช้งาน MediaPipe Hands

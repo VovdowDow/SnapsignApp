@@ -1,5 +1,5 @@
 import cv2
-import mediapipe as mp
+import hand_tracking as mp
 import json
 import os
 
