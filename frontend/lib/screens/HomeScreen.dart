@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
 import '../components/Navbar.dart';
 import 'TranslateScreen.dart';
 import 'GalleryScreen.dart';
@@ -23,18 +26,55 @@ class _HomeScreenState extends State<HomeScreen> {
     'assets/images/photo3.png',
   ];
 
-  // Future<void> _speak() async {
-  //   await flutterTts.setLanguage("th-TH");
-  //   await flutterTts.setPitch(1.0);
-  //   await flutterTts.setVolume(1.0);
-  //   await flutterTts.speak(
-  //     'วิธีการใช้งานแอปพลิเคชัน\n'
-  //     '1. ไปที่หน้า"กล้อง"\n'
-  //     '2. ยกมือทำท่าทางภาษามือต่อหน้ากล้อง\n'
-  //     '3. ระบบจะตรวจจับท่าทางแล้วแสดงข้อความแปลด้านล่าง\n'
-  //     '4. กดไอคอนลำโพงเพื่อให้ระบบอ่านข้อความให้ฟัง\n',
-  //   );
-  // }
+  File? _selectedImage;
+
+  Future<void> _pickImageFromGallery() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+      });
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('รูปที่เลือก'),
+          content: Image.file(
+            _selectedImage!,
+            width: 200,
+            height: 200,
+            fit: BoxFit.cover,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('ปิด'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GalleryScreen(
+                      selectedImage: _selectedImage!,
+                      translatedText: 'เหนื่อย',
+                    ),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 252, 192, 102),
+              ),
+              child: const Text('ดูคำแปล'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -46,10 +86,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF9FD),
-
-      // AppBar ด้านบน
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: const Color.fromARGB(255, 10, 44, 145),
         elevation: 0,
         centerTitle: true,
         title: Row(
@@ -63,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text(
               'SnapSign',
               style: TextStyle(
-                color: Colors.purple,
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 24,
               ),
@@ -78,7 +116,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -89,26 +126,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 text: const TextSpan(
                   text: 'สวัสดี,\n',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     color: Color.fromARGB(255, 122, 122, 122),
                   ),
                   children: [
                     TextSpan(
-                      text:
-                          'ยินดีต้อนรับเข้าสู่ แอปพลิเคชันแปลภาษามือสำหรับผู้พิการ',
+                      text: 'ยินดีต้อนรับเข้าสู่ แอปพลิเคชันแปลภาษามือสำหรับผู้พิการ',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                        fontSize: 18,
                         color: Color.fromARGB(255, 48, 48, 48),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 5),
-
+              const SizedBox(height: 20),
               SizedBox(
-                height: 180,
+                height: 200,
                 child: PageView.builder(
                   controller: _pageController,
                   itemCount: imagePaths.length,
@@ -129,14 +164,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 5),
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(imagePaths.length, (index) {
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 8,
-                    height: 8,
+                    width: 10,
+                    height: 10,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: _currentPage == index
@@ -146,69 +180,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }),
               ),
-              const SizedBox(height: 1),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'วิธีการใช้งาน',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  // TextButton.icon(
-                  //   onPressed: _speak,
-                  //   icon: const Icon(Icons.volume_up, color: Colors.black),
-                  //   label: const Text(
-                  //     'ฟังเสียง',
-                  //     style: TextStyle(color: Colors.black),
-                  //   ),
-                  // ),
-                ],
+              const SizedBox(height: 5),
+              const Text(
+                'วิธีการใช้งาน',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-
               const Text(
                 '1. ไปที่หน้า"กล้อง"\n'
                 '2. ยกมือทำท่าทางภาษามือต่อหน้ากล้อง\n'
-                '3. ระบบตรวจจับท่าทางแล้วขึ้นข้อความแปลด้านล่าง\n'
-                '4. กดไอคอนลำโพง🔊เพื่อให้ระบบอ่านข้อความให้ฟัง\n',
-                style: TextStyle(fontSize: 14),
-                
+                '3. ระบบตรวจจับท่าทางแล้วขึ้นข้อความแปลด้านล่าง\n',
+                style: TextStyle(fontSize: 15),
               ),
               const Text(
-                    'คำแนะนำ',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                'คำแนะนำ',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const Text(
                 '• ยกมือในตำแหน่งที่กล้องมองเห็นชัด (กลางหน้าจอ)\n'
                 '• อยู่ที่แสงสว่างพอ เพื่อให้ระบบตรวจจับได้แม่นยำ\n'
                 '• หลีกเลี่ยงฉากหลังที่วุ่นวายเกินไป\n',
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 15),
               ),
             ],
           ),
         ),
       ),
-
-      // ✅ ปุ่มลอยตรงกลาง
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.pinkAccent,
-        child: const Icon(Icons.camera_alt, color: Colors.white),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const TranslateScreen()),
-          );
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
-      // ✅ Navbar ด้านล่าง
+      
       bottomNavigationBar: Navbar(
         selectedIndex: _selectedIndex,
         onItemTapped: (index) {
@@ -217,9 +214,11 @@ class _HomeScreenState extends State<HomeScreen> {
               _selectedIndex = index;
             });
           } else if (index == 1) {
+            _pickImageFromGallery();
+          } else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const GalleryScreen()),
+              MaterialPageRoute(builder: (context) => const TranslateScreen()),
             );
           }
         },

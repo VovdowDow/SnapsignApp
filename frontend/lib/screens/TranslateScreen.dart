@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'SpeechPopup.dart';
 
 class TranslateScreen extends StatefulWidget {
@@ -12,7 +13,11 @@ class TranslateScreen extends StatefulWidget {
 class _TranslateScreenState extends State<TranslateScreen> {
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
-  bool _isCameraEnabled = true; // 👈 เพิ่มตัวแปร toggle กล้อง
+  List<CameraDescription>? _cameras;
+  int _selectedCameraIndex = 0;
+
+  final FlutterTts _flutterTts = FlutterTts();
+  String translatedText = 'สวัสดี'; // ✅ ตัวแปรเก็บคำแปล
 
   @override
   void initState() {
@@ -20,11 +25,12 @@ class _TranslateScreenState extends State<TranslateScreen> {
     _initCamera();
   }
 
-  Future<void> _initCamera() async {
-    final cameras = await availableCameras();
-    if (cameras.isNotEmpty) {
+  Future<void> _initCamera([int cameraIndex = 0]) async {
+    _cameras = await availableCameras();
+
+    if (_cameras!.isNotEmpty) {
       _cameraController = CameraController(
-        cameras[0],
+        _cameras![cameraIndex],
         ResolutionPreset.medium,
         enableAudio: false,
       );
@@ -33,6 +39,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
       if (mounted) {
         setState(() {
           _isCameraInitialized = true;
+          _selectedCameraIndex = cameraIndex;
         });
       }
     }
@@ -48,8 +55,18 @@ class _TranslateScreenState extends State<TranslateScreen> {
     }
   }
 
+  Future<void> _switchCamera() async {
+    if (_cameras == null || _cameras!.length < 2) return;
+
+    final newIndex = (_selectedCameraIndex + 1) % _cameras!.length;
+
+    await _cameraController?.dispose();
+    await _initCamera(newIndex);
+  }
+
   @override
   void dispose() {
+    _flutterTts.stop(); // ✅ หยุดเสียงเมื่อปิดหน้า
     _disposeCamera();
     super.dispose();
   }
@@ -57,27 +74,28 @@ class _TranslateScreenState extends State<TranslateScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 255, 165, 28),
       appBar: AppBar(
-        title: const Text('แปลภาษามือ'),
+        backgroundColor: const Color.fromARGB(255, 10, 44, 145),
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text(
+          'แปลภาษามือ',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: Icon(_isCameraEnabled ? Icons.videocam : Icons.videocam_off),
-            tooltip: _isCameraEnabled ? 'ปิดกล้อง' : 'เปิดกล้อง',
+            icon: const Icon(Icons.cameraswitch, color: Colors.white),
+            tooltip: 'สลับกล้อง',
             onPressed: () async {
-              if (_isCameraEnabled) {
-                await _disposeCamera();
-              } else {
-                await _initCamera();
-              }
-              setState(() {
-                _isCameraEnabled = !_isCameraEnabled;
-              });
+              await _switchCamera();
             },
           ),
           IconButton(
-            icon: const Icon(Icons.mic),
+            icon: const Icon(Icons.mic, color: Colors.white),
             onPressed: () {
               Navigator.push(
                 context,
@@ -98,7 +116,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
           // 🔴 Live Camera Feed
           Expanded(
             flex: 3,
-            child: _isCameraEnabled && _isCameraInitialized && _cameraController != null
+            child: _isCameraInitialized && _cameraController != null
                 ? Container(
                     width: double.infinity,
                     color: Colors.black,
@@ -119,36 +137,38 @@ class _TranslateScreenState extends State<TranslateScreen> {
                   )
                 : Container(
                     width: double.infinity,
-                    height: 250,
+                    height: 300,
                     color: Colors.grey[300],
                     alignment: Alignment.center,
                     child: const Text(
-                      'กล้องถูกปิด',
+                      'กล้องไม่พร้อมใช้งาน',
                       style: TextStyle(fontSize: 18, color: Colors.black54),
                     ),
                   ),
           ),
 
-          // 🔵 ภาษา
+          // 🔵 แถบภาษา + ปุ่มลำโพง
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 const Text('ภาษามือ'),
-                const Icon(Icons.swap_horiz, color: Colors.pink),
+                const Icon(Icons.east, color: Color.fromARGB(255, 10, 44, 145)),
                 const Text('ภาษาไทย'),
                 IconButton(
-                  icon: const Icon(Icons.volume_up),
-                  onPressed: () {
-                    // TODO: พูดข้อความที่แปลได้
+                  icon: const Icon(Icons.volume_up, color: Colors.black),
+                  onPressed: () async {
+                    await _flutterTts.setLanguage("th-TH");
+                    await _flutterTts.setPitch(1.0);
+                    await _flutterTts.speak(translatedText);
                   },
                 ),
               ],
             ),
           ),
 
-          // 🟣 ผลลัพธ์
+          // 🟣 กล่องผลลัพธ์
           Container(
             margin: const EdgeInsets.all(30),
             padding: const EdgeInsets.all(22),
@@ -157,9 +177,9 @@ class _TranslateScreenState extends State<TranslateScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
-              children: const [
-                Expanded(child: Text('สวัสดี')),
-                Icon(Icons.clear),
+              children: [
+                Expanded(child: Text(translatedText)),
+                const Icon(Icons.clear),
               ],
             ),
           ),

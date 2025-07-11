@@ -4,10 +4,10 @@ import 'package:permission_handler/permission_handler.dart';
 
 class SpeechPopup extends StatefulWidget {
   final VoidCallback onCancel;
-  final Function(String)? onTextTranscribed; // เพิ่ม callback สำหรับส่งข้อความกลับ
+  final Function(String)? onTextTranscribed;
 
   const SpeechPopup({
-    Key? key, 
+    Key? key,
     required this.onCancel,
     this.onTextTranscribed,
   }) : super(key: key);
@@ -16,14 +16,10 @@ class SpeechPopup extends StatefulWidget {
   State<SpeechPopup> createState() => _SpeechPopupState();
 }
 
-class _SpeechPopupState extends State<SpeechPopup>
-    with SingleTickerProviderStateMixin {
-  
-  // Animation controllers
+class _SpeechPopupState extends State<SpeechPopup> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  
-  // Speech to text
+
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _isAvailable = false;
@@ -34,52 +30,47 @@ class _SpeechPopupState extends State<SpeechPopup>
   @override
   void initState() {
     super.initState();
-    
-    // Initialize animation
+
     _controller = AnimationController(
-      duration: Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
-    
-    // Initialize speech to text
+
     _speech = stt.SpeechToText();
-    _initializeSpeech();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeSpeech();
+    });
   }
 
   void _initializeSpeech() async {
-    // ขอสิทธิ์เข้าถึงไมโครโฟน
-    var status = await Permission.microphone.request();
-    if (status != PermissionStatus.granted) {
+    final status = await Permission.microphone.request();
+    if (!status.isGranted) {
       _showPermissionDialog();
       return;
     }
 
     bool available = await _speech.initialize(
       onStatus: (val) {
-        print('Speech status: $val');
         if (val == 'notListening') {
           setState(() {
             _isListening = false;
             _controller.stop();
             _controller.reset();
           });
-        } else if (val == 'listening') {
-          print('Speech recognition is listening...');
         }
       },
       onError: (val) {
-        print('Speech error: ${val.errorMsg}');
         setState(() {
           _isListening = false;
           _controller.stop();
           _controller.reset();
         });
-        
-        // แสดงข้อความ error ที่เข้าใจง่ายขึ้น
-        String errorMessage = '';
+
+        String errorMessage;
         switch (val.errorMsg) {
           case 'error_speech_timeout':
             errorMessage = 'หมดเวลารอ กรุณาลองใหม่และพูดให้ชัดเจน';
@@ -96,23 +87,14 @@ class _SpeechPopupState extends State<SpeechPopup>
           default:
             errorMessage = 'เกิดข้อผิดพลาด: ${val.errorMsg}';
         }
+
         _showErrorDialog(errorMessage);
       },
-      debugLogging: true, // เปิด debug log
+      debugLogging: true,
     );
-    
+
     if (available) {
       setState(() => _isAvailable = true);
-      
-      // ดึงรายการภาษาที่รองรับ
-      var locales = await _speech.locales();
-      print('Available locales: $locales');
-      
-      // ตรวจสอบว่ามีภาษาไทย
-      bool hasThaiLocale = locales.any((locale) => 
-        locale.localeId.contains('en_US') || locale.localeId.contains('en_US'));
-      print('Thai locale available: $hasThaiLocale');
-      
     } else {
       setState(() => _isAvailable = false);
       _showErrorDialog('Speech recognition ไม่พร้อมใช้งานบนอุปกรณ์นี้');
@@ -125,7 +107,6 @@ class _SpeechPopupState extends State<SpeechPopup>
       return;
     }
 
-    // ตรวจสอบสิทธิ์อีกครั้ง
     var status = await Permission.microphone.status;
     if (!status.isGranted) {
       var result = await Permission.microphone.request();
@@ -139,38 +120,29 @@ class _SpeechPopupState extends State<SpeechPopup>
       _isListening = true;
       _currentWords = '';
     });
-    
+
     _controller.repeat(reverse: true);
-    
+
     try {
       await _speech.listen(
         onResult: (val) {
           setState(() {
             _currentWords = val.recognizedWords;
             _confidence = val.confidence;
-            
-            // ถ้าการฟังเสร็จสิ้น ให้อัพเดทข้อความที่แปลงแล้ว
             if (val.finalResult) {
               _transcribedText = val.recognizedWords;
             }
           });
         },
-        listenFor: Duration(seconds: 60),     // เพิ่มเวลาฟังเป็น 60 วินาที
-        pauseFor: Duration(seconds: 5),      // เพิ่มเวลาหยุดเป็น 5 วินาที
-        partialResults: true,                // แสดงผลระหว่างฟัง
-        localeId: 'th_TH',                  // ใช้ภาษาไทย
-        cancelOnError: false,                // ไม่ยกเลิกเมื่อเกิด error
+        listenFor: const Duration(seconds: 60),
+        pauseFor: const Duration(seconds: 5),
+        partialResults: true,
+        localeId: 'th_TH',
+        cancelOnError: false,
         listenMode: stt.ListenMode.confirmation,
-        onSoundLevelChange: (level) {
-          // แสดงระดับเสียงที่รับได้
-          print('Sound level: $level');
-        },
       );
     } catch (e) {
-      print('Error starting speech recognition: $e');
-      setState(() {
-        _isListening = false;
-      });
+      setState(() => _isListening = false);
       _controller.stop();
       _controller.reset();
       _showErrorDialog('ไม่สามารถเริ่มการฟังได้: ${e.toString()}');
@@ -189,33 +161,26 @@ class _SpeechPopupState extends State<SpeechPopup>
     _controller.reset();
   }
 
-  void _confirmText() {
-    if (_transcribedText.isNotEmpty && widget.onTextTranscribed != null) {
-      widget.onTextTranscribed!(_transcribedText);
-    }
-    widget.onCancel();
-  }
-
   void _showPermissionDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('ต้องการสิทธิ์เข้าถึงไมโครโฟน'),
-        content: Text('แอปต้องการสิทธิ์เข้าถึงไมโครโฟนเพื่อทำการอัดเสียง'),
+        title: const Text('ต้องการสิทธิ์เข้าถึงไมโครโฟน'),
+        content: const Text('แอปต้องการสิทธิ์เข้าถึงไมโครโฟนเพื่อทำการอัดเสียง'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               widget.onCancel();
             },
-            child: Text('ยกเลิก'),
+            child: const Text('ยกเลิก'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               openAppSettings();
             },
-            child: Text('ตั้งค่า'),
+            child: const Text('ตั้งค่า'),
           ),
         ],
       ),
@@ -226,12 +191,12 @@ class _SpeechPopupState extends State<SpeechPopup>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('เกิดข้อผิดพลาด'),
+        title: const Text('เกิดข้อผิดพลาด'),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('ตกลง'),
+            child: const Text('ตกลง'),
           ),
         ],
       ),
@@ -241,7 +206,7 @@ class _SpeechPopupState extends State<SpeechPopup>
   @override
   void dispose() {
     _controller.dispose();
-    _speech.stop();
+    if (_isListening) _speech.stop();
     super.dispose();
   }
 
@@ -249,268 +214,113 @@ class _SpeechPopupState extends State<SpeechPopup>
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        padding: EdgeInsets.all(30),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ไอคอนไมค์
-            AnimatedBuilder(
-              animation: _scaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _isListening ? _scaleAnimation.value : 1.0,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: _isListening 
-                          ? Colors.red.shade400 
-                          : (_isAvailable ? Colors.blue.shade400 : Colors.grey.shade400),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isListening ? Icons.mic : Icons.mic_none,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                );
-              },
-            ),
-            
-            SizedBox(height: 20),
-            
-            // ข้อความสถานะ
-            Text(
-              _isListening 
-                  ? 'กำลังฟัง...' 
-                  : (_isAvailable ? 'พร้อมอัดเสียง' : 'ไม่พร้อมใช้งาน'),
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade800,
-              ),
-            ),
-            
-            SizedBox(height: 10),
-            
-            Text(
-              _isListening 
-                  ? 'พูดเข้าไมโครโฟน' 
-                  : (_isAvailable ? 'กดปุ่มเริ่มอัดเสียง' : 'ตรวจสอบสิทธิ์การเข้าถึง'),
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-              ),
-            ),
-            
-            // แสดง confidence level ถ้ากำลังฟัง
-            if (_isListening && _confidence > 0) ...[
-              SizedBox(height: 10),
-              Text(
-                'ความแม่นยำ: ${(_confidence * 100).toInt()}%',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.green.shade600,
-                  fontWeight: FontWeight.w500,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.topRight,
+                child: GestureDetector(
+                  onTap: widget.onCancel,
+                  child: const Icon(Icons.close, size: 24, color: Colors.grey),
                 ),
               ),
-            ],
-            
-            SizedBox(height: 30),
-            
-            // ช่องแสดงข้อความที่แปลงแล้ว
-            Container(
-              width: double.infinity,
-              constraints: BoxConstraints(minHeight: 80, maxHeight: 150),
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
+
+              const SizedBox(height: 10),
+
+              // 🎤 ไอคอนไมค์ใหญ่
+              AnimatedBuilder(
+                animation: _scaleAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _isListening ? _scaleAnimation.value : 1.0,
+                    child: Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: _isListening
+                            ? Colors.red.shade400
+                            : (_isAvailable ? Colors.blue.shade400 : Colors.grey.shade400),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                  );
+                },
               ),
-              child: SingleChildScrollView(
+
+              const SizedBox(height: 20),
+
+              const Text(
+                'กดปุ่มเริ่มอัดเสียง',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 30),
+
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'ข้อความที่แปลงได้:',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey.shade700,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      _isListening && _currentWords.isNotEmpty
-                          ? _currentWords
-                          : (_transcribedText.isNotEmpty ? _transcribedText : 'ยังไม่มีข้อความ'),
+                    const Text(
+                      'ข้อความที่แปลงได้ :',
                       style: TextStyle(
                         fontSize: 16,
-                        color: (_isListening && _currentWords.isNotEmpty) || _transcribedText.isNotEmpty
-                            ? Colors.grey.shade800 
-                            : Colors.grey.shade500,
-                        height: 1.4,
-                        fontStyle: _isListening && _currentWords.isNotEmpty
-                            ? FontStyle.italic 
-                            : FontStyle.normal,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _transcribedText.isNotEmpty ? _transcribedText : 'ยังไม่มีข้อความ',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: _transcribedText.isNotEmpty ? Colors.black : Colors.grey,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            
-            SizedBox(height: 20),
-            
-            // ปุ่มต่างๆ
-            if (!_isListening) ...[
-              // ปุ่มเริ่มอัดเสียง
+
+              const SizedBox(height: 30),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isAvailable ? _startListening : null,
+                  onPressed: _isListening ? _stopListening : _startListening,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isAvailable ? Colors.red.shade500 : Colors.grey.shade400,
+                    backgroundColor: Colors.red,
                     foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.mic, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'เริ่มอัดเสียง',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              // ปุ่มยืนยันข้อความ (ถ้ามีข้อความแล้ว)
-              if (_transcribedText.isNotEmpty) ...[
-                SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _confirmText,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green.shade600,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'ใช้ข้อความนี้',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-              
-              SizedBox(height: 12),
-              
-              // ปุ่มยกเลิก
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: widget.onCancel,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade600,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 15),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: Text(
-                    'ยกเลิก',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ] else ...[
-              // ปุ่มหยุดอัด
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _stopListening,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade600,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.stop, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'หยุดอัด',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              
-              SizedBox(height: 12),
-              
-              // ปุ่มยกเลิก
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: widget.onCancel,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.grey.shade700,
-                    padding: EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(color: Colors.grey.shade400),
-                  ),
-                  child: Text(
-                    'ยกเลิก',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    _isListening ? 'หยุดอัดเสียง' : 'เริ่มอัดเสียง',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
