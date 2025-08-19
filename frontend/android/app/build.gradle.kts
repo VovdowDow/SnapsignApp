@@ -17,19 +17,18 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
-    }   
+    }
 
+    // ถ้าใช้ AGP เวอร์ชันเก่ากว่า 8 ก็ใช้ aaptOptions ได้ตามเดิม
     aaptOptions {
         noCompress += "tflite"
         noCompress += "binarypb"
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.snapsign"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdkVersion(21)
+        // Kotlin DSL เขียนแบบนี้จะชัวร์กว่า
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -37,18 +36,25 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // ใช้ debug keystore ชั่วคราว
             signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
+    // กันไฟล์ LICENSE/NOTICE ซ้ำเมื่อดึง lib เพิ่ม
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1,LICENSE*,NOTICE*}"
         }
     }
 }
 
-// dependencies {
-//     implementation("com.google.mediapipe:mediapipe-hands:0.10.7")
-//     implementation("com.google.mediapipe:mediapipe-framework:0.10.7")
-//     implementation("org.tensorflow:tensorflow-lite:2.10.0")
-// }
+// ⬇️ เพิ่มบล็อก dependencies แบบ Kotlin DSL (ห้ามใช้ '…' แบบ Groovy)
+dependencies {
+    implementation("com.google.mediapipe:tasks-vision:0.20230731")
+    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+}
 
 flutter {
     source = "../.."

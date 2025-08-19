@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 text: const TextSpan(
                   text: 'สวัสดี,\n',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     color: Color.fromARGB(255, 122, 122, 122),
                   ),
                   children: [
@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       text: 'ยินดีต้อนรับเข้าสู่ แอปพลิเคชันแปลภาษามือสำหรับผู้พิการ',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        fontSize: 20,
                         color: Color.fromARGB(255, 48, 48, 48),
                       ),
                     ),
@@ -183,23 +183,23 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 5),
               const Text(
                 'วิธีการใช้งาน',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Text(
                 '1. ไปที่หน้า"กล้อง"\n'
                 '2. ยกมือทำท่าทางภาษามือต่อหน้ากล้อง\n'
                 '3. ระบบตรวจจับท่าทางแล้วขึ้นข้อความแปลด้านล่าง\n',
-                style: TextStyle(fontSize: 15),
+                style: TextStyle(fontSize: 18),
               ),
               const Text(
                 'คำแนะนำ',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const Text(
                 '• ยกมือในตำแหน่งที่กล้องมองเห็นชัด (กลางหน้าจอ)\n'
                 '• อยู่ที่แสงสว่างพอ เพื่อให้ระบบตรวจจับได้แม่นยำ\n'
                 '• หลีกเลี่ยงฉากหลังที่วุ่นวายเกินไป\n',
-                style: TextStyle(fontSize: 15),
+                style: TextStyle(fontSize: 18),
               ),
             ],
           ),

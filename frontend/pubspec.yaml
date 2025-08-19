@@ -42,4 +42,7 @@ flutter:
     - assets/images/photo3.png
     - assets/images/logo.png
     - assets/images/LogoApp1.png
+    - assets/models/gesture_model.tflite
+    - assets/models/labels.json
+    - assets/models/hand_landmarker.task
     

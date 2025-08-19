@@ -3,6 +3,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'SpeechPopup.dart';
 
+import 'dart:async';
+import 'package:flutter/services.dart';
+
 class TranslateScreen extends StatefulWidget {
   const TranslateScreen({super.key});
 
@@ -17,56 +20,116 @@ class _TranslateScreenState extends State<TranslateScreen> {
   int _selectedCameraIndex = 0;
 
   final FlutterTts _flutterTts = FlutterTts();
-  String translatedText = 'สวัสดี'; // ✅ ตัวแปรเก็บคำแปล
+  String translatedText = ''; // ✅ ข้อความแปลที่จะแสดง/พูด
+
+  // 🔌 ช่องสื่อสารกับ Native
+  static const MethodChannel _method = MethodChannel('snapsign/native');
+  static const EventChannel _events = EventChannel('snapsign/native/events');
+
+  StreamSubscription? _gestureSub;
+  bool _isProcessing = false;
+  int _lastSentMs = 0;
 
   @override
   void initState() {
     super.initState();
     _initCamera();
+    _listenGestureStream(); // 📡 รอรับผลจาก Native
+  }
+
+  void _listenGestureStream() {
+    _gestureSub = _events.receiveBroadcastStream().listen(
+      (dynamic label) {
+        if (!mounted) return;
+        setState(() => translatedText = (label ?? '').toString());
+      },
+      onError: (e) => debugPrint('EventChannel error: $e'),
+    );
   }
 
   Future<void> _initCamera([int cameraIndex = 0]) async {
     _cameras = await availableCameras();
+    if (_cameras == null || _cameras!.isEmpty) return;
 
-    if (_cameras!.isNotEmpty) {
-      _cameraController = CameraController(
-        _cameras![cameraIndex],
-        ResolutionPreset.medium,
-        enableAudio: false,
-      );
+    _cameraController = CameraController(
+      _cameras![cameraIndex],
+      ResolutionPreset.medium,
+      enableAudio: false,
+    );
 
-      await _cameraController!.initialize();
-      if (mounted) {
-        setState(() {
-          _isCameraInitialized = true;
-          _selectedCameraIndex = cameraIndex;
-        });
-      }
+    await _cameraController!.initialize();
+    // ▶️ เริ่มดึงภาพเป็นสตรีมแล้วส่งไป Native เป็นระยะ
+    await _cameraController!.startImageStream(_onImage);
+
+    if (!mounted) return;
+    setState(() {
+      _isCameraInitialized = true;
+      _selectedCameraIndex = cameraIndex;
+    });
+  }
+
+  Future<void> _onImage(CameraImage image) async {
+    if (_isProcessing) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastSentMs < 250) return; // ⏱️ throttle ~4 fps เพื่อไม่หนักเครื่อง
+    _isProcessing = true;
+    _lastSentMs = now;
+
+    try {
+      // ส่งข้อมูลที่จำเป็นไป Native (รองรับ Android: YUV_420_888)
+      await _method.invokeMethod('analyze', {
+        'width': image.width,
+        'height': image.height,
+        'format': image.format.raw, // ส่วนใหญ่จะเป็น 35 บน Android
+        'planes': image.planes
+            .map((p) => {
+                  'bytes': p.bytes, // Uint8List -> จะถูกส่งเป็น byte array
+                  'bytesPerRow': p.bytesPerRow,
+                  'bytesPerPixel': p.bytesPerPixel ?? 0,
+                })
+            .toList(),
+      });
+    } catch (e) {
+      debugPrint('analyze error: $e');
+    } finally {
+      _isProcessing = false;
     }
   }
 
   Future<void> _disposeCamera() async {
     if (_cameraController != null) {
+      if (_cameraController!.value.isStreamingImages) {
+        try {
+          await _cameraController!.stopImageStream();
+        } catch (_) {}
+      }
       await _cameraController!.dispose();
       _cameraController = null;
-      setState(() {
-        _isCameraInitialized = false;
-      });
+    }
+    if (mounted) {
+      setState(() => _isCameraInitialized = false);
     }
   }
 
   Future<void> _switchCamera() async {
     if (_cameras == null || _cameras!.length < 2) return;
-
     final newIndex = (_selectedCameraIndex + 1) % _cameras!.length;
 
+    // หยุดสตรีมเดิมก่อนสลับ
+    if (_cameraController != null &&
+        _cameraController!.value.isStreamingImages) {
+      try {
+        await _cameraController!.stopImageStream();
+      } catch (_) {}
+    }
     await _cameraController?.dispose();
-    await _initCamera(newIndex);
+    await _initCamera(newIndex); // จะ startImageStream ใหม่ให้แล้ว
   }
 
   @override
   void dispose() {
-    _flutterTts.stop(); // ✅ หยุดเสียงเมื่อปิดหน้า
+    _gestureSub?.cancel();
+    _flutterTts.stop();
     _disposeCamera();
     super.dispose();
   }
@@ -90,9 +153,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
           IconButton(
             icon: const Icon(Icons.cameraswitch, color: Colors.white),
             tooltip: 'สลับกล้อง',
-            onPressed: () async {
-              await _switchCamera();
-            },
+            onPressed: () async => _switchCamera(),
           ),
           IconButton(
             icon: const Icon(Icons.mic, color: Colors.white),
@@ -101,9 +162,7 @@ class _TranslateScreenState extends State<TranslateScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => SpeechPopup(
-                    onCancel: () {
-                      Navigator.of(context).pop();
-                    },
+                    onCancel: () => Navigator.of(context).pop(),
                   ),
                 ),
               );
@@ -178,8 +237,19 @@ class _TranslateScreenState extends State<TranslateScreen> {
             ),
             child: Row(
               children: [
-                Expanded(child: Text(translatedText)),
-                const Icon(Icons.clear),
+                Expanded(
+                  child: Text(
+                    translatedText.isEmpty ? '—' : translatedText,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  onTap: () => setState(() => translatedText = ''),
+                  child: const Icon(Icons.clear),
+                ),
               ],
             ),
           ),
