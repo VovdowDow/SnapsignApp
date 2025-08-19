@@ -77,9 +77,14 @@ def main():
 
     # เซฟ mapping id→label สำหรับใช้ตอนทำนาย
     id2label = {int(v): k for k, v in label2id.items()}
+    labels_list = [None] * len(id2label)
+    for i, name in id2label.items():
+        labels_list[i] = name
+
     with open(LABELS_PATH, "w", encoding="utf-8") as f:
-        json.dump(id2label, f, ensure_ascii=False, indent=2)
-    print(f"[INFO] Saved labels → {LABELS_PATH}")
+        json.dump(labels_list, f, ensure_ascii=False, indent=2)
+
+    print(f"[INFO] Saved labels → {LABELS_PATH}  (list order = model output index)")
 
 if __name__ == "__main__":
     main()

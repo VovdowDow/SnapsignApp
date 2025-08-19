@@ -49,7 +49,7 @@ android {
     }
 }
 
-// ⬇️ เพิ่มบล็อก dependencies แบบ Kotlin DSL (ห้ามใช้ '…' แบบ Groovy)
+
 dependencies {
     implementation("com.google.mediapipe:tasks-vision:0.20230731")
     implementation("org.tensorflow:tensorflow-lite:2.14.0")
